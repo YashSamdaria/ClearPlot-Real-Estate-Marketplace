@@ -13,23 +13,59 @@ L.Icon.Default.mergeOptions({
 });
 
 const binaryFields = [
-  'Resale','MaintenanceStaff','Gymnasium','SwimmingPool','LandscapedGardens','JoggingTrack',
-  'RainWaterHarvesting','IndoorGames','ShoppingMall','Intercom','SportsFacility','ATM','ClubHouse',
-  'School','24X7Security','PowerBackup','CarParking','StaffQuarter','Cafeteria','MultipurposeRoom',
-  'Hospital','WashingMachine','Gasconnection','AC','Wifi','Childrensplayarea','LiftAvailable',
-  'BED','VaastuCompliant','Microwave','GolfCourse','TV','DiningTable','Sofa','Wardrobe','Refrigerator'
+  "Resale",
+  "MaintenanceStaff",
+  "Gymnasium",
+  "SwimmingPool",
+  "LandscapedGardens",
+  "JoggingTrack",
+  "RainWaterHarvesting",
+  "IndoorGames",
+  "ShoppingMall",
+  "Intercom",
+  "SportsFacility",
+  "ATM",
+  "ClubHouse",
+  "School",
+  "24X7Security",
+  "PowerBackup",
+  "CarParking",
+  "StaffQuarter",
+  "Cafeteria",
+  "MultipurposeRoom",
+  "Hospital",
+  "WashingMachine",
+  "Gasconnection",
+  "AC",
+  "Wifi",
+  "Childrensplayarea",
+  "LiftAvailable",
+  "BED",
+  "VaastuCompliant",
+  "Microwave",
+  "GolfCourse",
+  "TV",
+  "DiningTable",
+  "Sofa",
+  "Wardrobe",
+  "Refrigerator",
 ];
 
 const PostProperty = () => {
   const [formData, setFormData] = useState({
-    Area: '',
-    'No. of Bedrooms': '',
-    ...binaryFields.reduce((o, f) => ({ ...o, [f]: 'No' }), {}),
-    City: '',
-    Latitude: '',
-    Longitude: '',
-    Price: '',
-    PredictedPrice: ''
+    Area: "",
+    "No. of Bedrooms": "",
+    City: "",
+    Latitude: "",
+    Longitude: "",
+    Price: "",
+    PredictedPrice: "",
+    Description: "",
+    ListingType: "Buy",
+    PropertyType: "Apartment",
+    Furnishing: "Unfurnished",
+    Facing: "East",
+    ...binaryFields.reduce((o, f) => ({ ...o, [f]: "No" }), {}),
   });
 
   const [images, setImages] = useState([]);
@@ -37,62 +73,183 @@ const PostProperty = () => {
   const navigate = useNavigate();
 
   const LocationSelector = () => {
-    useMapEvents({ click(e) {
-      setMarkerPosition(e.latlng);
-      setFormData(prev => ({
-        ...prev,
-        Latitude: e.latlng.lat.toFixed(6),
-        Longitude: e.latlng.lng.toFixed(6)
-      }));
-    }});
+    useMapEvents({
+      click(e) {
+        setMarkerPosition(e.latlng);
+        setFormData((prev) => ({
+          ...prev,
+          Latitude: e.latlng.lat.toFixed(6),
+          Longitude: e.latlng.lng.toFixed(6),
+        }));
+      },
+    });
     return markerPosition ? <Marker position={markerPosition} /> : null;
   };
 
-  const handleChange = e => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = e => {
+  const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length + images.length > 5) return alert("Max 5 images");
-    setImages(prev => [...prev, ...files]);
+    setImages((prev) => [...prev, ...files]);
   };
 
-  const removeImage = idx => setImages(prev => prev.filter((_,i) => i!==idx));
+  const removeImage = (idx) =>
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+
+  const buildPredictPayload = () => {
+    const payload = {};
+    payload.Area = Number(formData.Area);
+    payload["No. of Bedrooms"] = Number(formData["No. of Bedrooms"]);
+    payload.Latitude = Number(formData.Latitude);
+    payload.Longitude = Number(formData.Longitude);
+    binaryFields.forEach((f) => {
+      payload[f] = formData[f] === "Yes" ? 1 : 0;
+    });
+    return payload;
+  };
 
   const handlePredictPrice = async () => {
     try {
-      const res = await fetch("http://localhost:5000/predict",{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(formData)
+      const payload = buildPredictPayload();
+
+      const res = await fetch("http://localhost:5001/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+
       const data = await res.json();
-      if(res.ok) setFormData(prev=>({...prev,PredictedPrice:data.predictedPrice}));
-      else alert("Prediction failed");
-    } catch {alert("Error predicting");}
+
+      if (!res.ok) {
+        alert("Prediction failed: " + (data.message || data.error));
+        return;
+      }
+
+      // Always use backend prediction
+      let predictedPriceLakhs = Number(data.predicted_price);
+      predictedPriceLakhs = predictedPriceLakhs * 100000;
+      let predicted;
+      if (formData.ListingType === "Rent") {
+        // Estimate monthly rent from predicted capital value
+        predicted = (predictedPriceLakhs * 0.003).toFixed(0); // Rent in ₹
+      } else {
+        predicted = predictedPriceLakhs.toFixed(2); // Price in Lakhs
+      }
+
+      console.log("Predicted:", predicted);
+
+      setFormData((prev) => ({ ...prev, PredictedPrice: predicted }));
+    } catch (err) {
+      console.error("Error during prediction:", err);
+      alert("Error predicting price.");
+    }
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem("token"); if(!token) return alert("Login required");
+    const token = localStorage.getItem("token");
+    if (!token) return alert("Login required");
+
+    if (!formData.PredictedPrice) await handlePredictPrice();
+
     const payload = new FormData();
-    Object.entries(formData).forEach(([k,v])=> payload.append(k, v));
-    images.forEach(img=>payload.append("images", img));
-    const res = await fetch("http://localhost:5000/post-properties",{
-      method:"POST",headers:{Authorization:`Bearer ${token}`},body:payload
+    Object.entries(formData).forEach(([k, v]) => payload.append(k, v));
+    images.forEach((img) => payload.append("images", img));
+
+    const res = await fetch("http://localhost:5000/post-properties", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: payload,
     });
-    if(res.ok) navigate('/properties'); else alert("Submit failed");
+    if (res.ok) navigate("/properties");
+    else alert("Submit failed");
   };
 
-  const yesNo = ['Yes','No'];
+  const yesNo = ["Yes", "No"];
+  const listingTypes = ["Buy", "Rent"];
+  const propertyTypes = ["Apartment", "Standalone", "Villa", "Row House"];
+  const furnishings = ["Unfurnished", "Semi Furnished", "Fully Furnished"];
+  const facings = [
+    "East",
+    "West",
+    "North",
+    "South",
+    "North-East",
+    "South-West",
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-700 to-indigo-700 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8">
-        <h2 className="text-3xl font-bold text-center text-purple-800 mb-8">List Your Property</h2>
+        <h2 className="text-3xl font-bold text-center text-purple-800 mb-8">
+          List Your Property
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Listing & Property Type */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-1">Listing Type</label>
+              <select
+                name="ListingType"
+                value={formData.ListingType}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+              >
+                {listingTypes.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Property Type</label>
+              <select
+                name="PropertyType"
+                value={formData.PropertyType}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+              >
+                {propertyTypes.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-          {/* Owner & Specs */}
+          {/* Furnishing & Facing */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-gray-700 mb-1">Furnishing</label>
+              <select
+                name="Furnishing"
+                value={formData.Furnishing}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+              >
+                {furnishings.map((f) => (
+                  <option key={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-gray-700 mb-1">Facing</label>
+              <select
+                name="Facing"
+                value={formData.Facing}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+              >
+                {facings.map((f) => (
+                  <option key={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Specs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 mb-1">Area (sq ft)</label>
@@ -109,19 +266,19 @@ const PostProperty = () => {
               <input
                 name="No. of Bedrooms"
                 type="number"
-                value={formData['No. of Bedrooms']}
+                value={formData["No. of Bedrooms"]}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
             </div>
           </div>
 
-          {/* Amenity Toggles */}
+          {/* Amenities */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {binaryFields.map(f => (
+            {binaryFields.map((f) => (
               <div key={f}>
                 <label className="block text-gray-700 mb-1 text-sm">
-                  {f.replace(/([A-Z])/g, ' $1')}
+                  {f.replace(/([A-Z])/g, " $1")}
                 </label>
                 <select
                   name={f}
@@ -129,13 +286,15 @@ const PostProperty = () => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
                 >
-                  {yesNo.map(o => <option key={o}>{o}</option>)}
+                  {yesNo.map((o) => (
+                    <option key={o}>{o}</option>
+                  ))}
                 </select>
               </div>
             ))}
           </div>
 
-          {/* Location & City */}
+          {/* City & Coordinates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-gray-700 mb-1">City</label>
@@ -146,7 +305,7 @@ const PostProperty = () => {
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
               />
             </div>
-            <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-gray-700 mb-1">Latitude</label>
                 <input
@@ -162,16 +321,18 @@ const PostProperty = () => {
                   name="Longitude"
                   value={formData.Longitude}
                   readOnly
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-100"
+                  className="w-full px-4 py-2	border rounded-lg bg-gray-100"
                 />
               </div>
             </div>
           </div>
 
-          {/* Price Fields */}
+          {/* Price & Prediction*/}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-gray-700 mb-1">Price (₹ Lakhs)</label>
+              <label className="block text-gray-700 mb-1">
+                Price (₹ Lakhs)
+              </label>
               <input
                 name="Price"
                 type="number"
@@ -181,7 +342,9 @@ const PostProperty = () => {
               />
             </div>
             <div>
-              <label className="block text-gray-700 mb-1">Predicted Price</label>
+              <label className="block text-gray-700 mb-1">
+                Predicted Price
+              </label>
               <input
                 name="PredictedPrice"
                 value={formData.PredictedPrice}
@@ -212,20 +375,43 @@ const PostProperty = () => {
                     type="button"
                     onClick={() => removeImage(idx)}
                     className="absolute top-1 right-1 bg-white rounded-full p-1 text-red-500 hover:bg-gray-100"
-                  >×</button>
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Map Selector */}
+          {/* Description & Enhance Button */}
           <div>
-            <label className="block text-gray-700 mb-1">Select Location on Map</label>
+            <label className="block text-gray-700 mb-1">Description</label>
+            <textarea
+              name="Description"
+              value={formData.Description}
+              onChange={handleChange}
+              rows={4}
+              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+            />
+            <button
+              type="button"
+              // onClick={handleEnhanceDescription}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+            >
+              Enhance Description
+            </button>
+          </div>
+
+          {/* Map */}
+          <div>
+            <label className="block text-gray-700 mb-1">
+              Select Location on Map
+            </label>
             <div className="rounded-lg overflow-hidden shadow">
               <MapContainer
                 center={[12.9716, 77.5946]}
                 zoom={13}
-                style={{ height: 300, width: '100%' }}
+                style={{ height: 300, width: "100%" }}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <LocationSelector />
@@ -233,19 +419,22 @@ const PostProperty = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Actions */}
           <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"
               onClick={handlePredictPrice}
               className="px-6 py-2 bg-white text-purple-700 rounded-lg font-medium hover:bg-gray-100 transition"
-            >Predict Price</button>
+            >
+              Predict Price
+            </button>
             <button
               type="submit"
               className="px-6 py-2 bg-purple-700 text-white rounded-lg font-medium hover:bg-purple-800 transition"
-            >Submit</button>
+            >
+              Submit
+            </button>
           </div>
-
         </form>
       </div>
     </div>

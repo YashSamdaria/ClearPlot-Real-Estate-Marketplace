@@ -138,14 +138,16 @@ class HousePricePredictor:
         return metrics
 
     def predict(self, input_data):
+        if self.voting_reg is None or self.pca is None:
+            self.train_model()
         """Make prediction for new input"""
-        input_df = pd.DataFrame([input_data])
         
         # Check features
-        missing = [f for f in self.all_features if f not in input_df.columns]
-        if missing:
-            raise ValueError(f"Missing features: {missing}")
-            
+        for f in self.all_features:
+            if f not in input_data:
+                input_data[f] = 0
+
+        input_df = pd.DataFrame([input_data])
         preprocessed = self.preprocess_data(input_df)
         prediction = self.voting_reg.predict(preprocessed)[0]
         

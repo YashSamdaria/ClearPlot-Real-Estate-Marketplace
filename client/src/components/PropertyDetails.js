@@ -3,7 +3,6 @@ import { useParams, useLocation, Link } from "react-router-dom";
 import { Carousel } from "react-responsive-carousel";
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 export default function PropertyDetails() {
@@ -17,7 +16,8 @@ export default function PropertyDetails() {
     if (property && property.userId) {
       const fetchPoster = async () => {
         try {
-          const userId = typeof property.userId === "object" ? property.userId.$oid || property.userId : property.userId;
+          const userId =
+            typeof property.userId === "object" ? property.userId.$oid || property.userId : property.userId;
           const res = await fetch(`http://localhost:5000/get-user/${userId}`);
           const data = await res.json();
           setPoster(data);
@@ -31,7 +31,12 @@ export default function PropertyDetails() {
 
   if (!property) return <div className="text-white p-10 text-center">Loading...</div>;
 
-  const [lat, lng] = property.location.split(",").map(Number);
+  const lat = property.Latitude;
+  const lng = property.Longitude;
+
+  const binaryFeatures = Object.entries(property.BinaryFeatures || {})
+    .filter(([_, value]) => value === "Yes")
+    .map(([feature]) => feature);
 
   return (
     <div className="bg-[#0b0c10] text-white min-h-screen">
@@ -40,7 +45,6 @@ export default function PropertyDetails() {
         showThumbs={false}
         showStatus={false}
         infiniteLoop
-        dynamicHeight={false}
         autoPlay
         emulateTouch
         className="w-full max-w-4xl mx-auto"
@@ -56,26 +60,53 @@ export default function PropertyDetails() {
         ))}
       </Carousel>
 
-      <div className="max-w-4xl mx-auto px-4 py-10 space-y-6">
-        <h1 className="text-4xl font-bold">
-          {property.propertyType} - {property.bhkType} BHK
+      <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
+        <h1 className="text-3xl font-bold">
+          {property.PropertyType} - {property.Bedrooms} BHK
         </h1>
-        <p className="text-yellow-400 text-2xl font-semibold">₹ {property.price}</p>
-        <p className="text-gray-400 text-lg">{property.area}, {property.city}</p>
 
-        <div className="grid grid-cols-2 gap-6 text-md text-gray-300 mt-6">
-          <p><span className="text-white font-semibold">Built-up:</span> {property.builtUpArea} sqft</p>
-          <p><span className="text-white font-semibold">Carpet:</span> {property.carpetArea} sqft</p>
-          <p><span className="text-white font-semibold">Floor:</span> {property.floorNumber}/{property.totalFloors}</p>
-          <p><span className="text-white font-semibold">Furnishing:</span> {property.furnishing}</p>
-          <p><span className="text-white font-semibold">Age:</span> {property.propertyAge} yrs</p>
-          <p><span className="text-white font-semibold">Facing:</span> {property.facing}</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <p className="text-yellow-400 text-2xl font-semibold">₹ {property.Price}</p>
+          <p className="text-green-400 text-xl font-medium">Predicted Price: ₹ {property.PredictedPrice}</p>
         </div>
 
+        <p className="text-gray-400 text-lg">{property.Area} sqft, {property.City}</p>
+
+        <div className="grid grid-cols-2 gap-4 text-md text-gray-300 mt-6">
+          <p><span className="font-semibold text-white">Listing Type:</span> {property.ListingType}</p>
+          <p><span className="font-semibold text-white">Furnishing:</span> Unfurnished</p>
+          <p><span className="font-semibold text-white">Property Age:</span> Not specified</p>
+          <p><span className="font-semibold text-white">Facing:</span> Not specified</p>
+        </div>
+
+        {/* Description */}
         <div>
           <h2 className="text-2xl font-semibold mt-10 mb-2">Description</h2>
-          <p className="text-gray-300 text-base leading-relaxed">{property.description}</p>
+          <p className="text-gray-300 text-base leading-relaxed">{property.Description}</p>
         </div>
+
+        {/* Binary Features Table */}
+        {binaryFeatures.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-semibold mt-10 mb-2">Features</h2>
+            <table className="table-auto w-full text-gray-300">
+              <thead>
+                <tr>
+                  <th className="px-4 py-2 text-left">Feature</th>
+                  <th className="px-4 py-2 text-left">Available</th>
+                </tr>
+              </thead>
+              <tbody>
+                {binaryFeatures.map((feature, i) => (
+                  <tr key={i}>
+                    <td className="px-4 py-2">{feature}</td>
+                    <td className="px-4 py-2">Yes</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Map */}
         <div className="mt-10">
@@ -95,12 +126,12 @@ export default function PropertyDetails() {
                   rel="noopener noreferrer"
                   className="text-blue-500 hover:underline"
                 >
-                  {property.area}, {property.city} - View on Google Maps
+                  {property.City} - View on Google Maps
                 </a>
               </Popup>
             </Marker>
           </MapContainer>
-          <p className="text-sm text-gray-400 mt-1">Click on the location for Google Maps</p>
+          <p className="text-sm text-gray-400 mt-1">Click on the marker for Google Maps</p>
         </div>
 
         {/* Posted By */}
@@ -113,7 +144,6 @@ export default function PropertyDetails() {
             <p className="text-gray-300 text-lg">
               <span className="font-semibold text-white">Email:</span> {poster.email}
             </p>
-            {/* Optional - in case you add phone to user schema later */}
             {poster.phone && (
               <p className="text-gray-300 text-lg">
                 <span className="font-semibold text-white">Phone:</span> {poster.phone}

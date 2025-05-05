@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 
+// Models
 const User = require('./model/User');
 const Property = require('./model/Property');
 
@@ -26,7 +27,7 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-// Multer config
+// Multer config for file uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, './uploads');
@@ -37,6 +38,7 @@ const storage = multer.diskStorage({
     cb(null, file.fieldname + '-' + uniqueSuffix + ext);
   }
 });
+
 const upload = multer({ storage });
 
 // Connect MongoDB
@@ -64,10 +66,13 @@ const authenticateUser = (req, res, next) => {
 };
 
 // Routes
+
+// Basic Route
 app.get('/', (req, res) => {
   res.send('ClearPLOT backend is live!');
 });
 
+// Register Route
 app.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) {
@@ -85,6 +90,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// Login Route
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -105,54 +111,49 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Post Property Route
 app.post("/post-properties", authenticateUser, upload.array("images", 5), async (req, res) => {
   try {
-    const {
-      ownerName,
-      contactNumber,
-      propertyType,
-      bhkType,
-      city,
-      area,
-      propertyAge,
-      facing,
-      furnishing,
-      builtUpArea,
-      carpetArea,
-      floorNumber,
-      totalFloors,
-      amenities,
-      price,
-      description,
-      location,
-    } = req.body;
-
+    const form = req.body;
     const imagePaths = req.files.map(file => file.filename);
+
+    const binaryFields = [
+      'Resale','MaintenanceStaff','Gymnasium','SwimmingPool','LandscapedGardens','JoggingTrack','RainWaterHarvesting',
+      'IndoorGames','ShoppingMall','Intercom','SportsFacility','ATM','ClubHouse','School','24X7Security','PowerBackup',
+      'CarParking','StaffQuarter','Cafeteria','MultipurposeRoom','Hospital','WashingMachine','Gasconnection','AC','Wifi',
+      'Childrensplayarea','LiftAvailable','BED','VaastuCompliant','Microwave','GolfCourse','TV','DiningTable','Sofa',
+      'Wardrobe','Refrigerator'
+    ];
+
+    const BinaryFeatures = {};
+    for (const field of binaryFields) {
+      if (field in form) BinaryFeatures[field] = form[field];
+    }
+
+    let predictedPrice = parseFloat(form.PredictedPrice);
+    if (!predictedPrice || isNaN(predictedPrice)) {
+      predictedPrice = form.ListingType === 'Rent'
+        ? 0.3 * parseFloat(form.Price || 0)
+        : parseFloat(form.Price || 0);
+    }
 
     const newProperty = new Property({
       userId: req.userId,
-      ownerName,
-      contactNumber,
-      propertyType,
-      bhkType,
-      city,
-      area,
-      propertyAge,
-      facing,
-      furnishing,
-      builtUpArea,
-      carpetArea,
-      floorNumber,
-      totalFloors,
-      amenities,
-      price,
-      description,
-      location,
+      ListingType: form.ListingType,
+      PropertyType: form.PropertyType,
+      City: form.City,
+      Area: parseFloat(form.Area),
+      Bedrooms: parseInt(form['No. of Bedrooms'], 10),
+      Latitude: parseFloat(form.Latitude),
+      Longitude: parseFloat(form.Longitude),
+      Price: parseFloat(form.Price),
+      PredictedPrice: predictedPrice,
+      BinaryFeatures,
       images: imagePaths,
+      Description: form.Description,
     });
 
     await newProperty.save();
-
     res.status(201).json({ message: "Property posted successfully", property: newProperty });
   } catch (err) {
     console.error(err);
@@ -160,6 +161,7 @@ app.post("/post-properties", authenticateUser, upload.array("images", 5), async 
   }
 });
 
+// Get User Details by ID
 app.get("/get-user/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("name email");
@@ -171,6 +173,7 @@ app.get("/get-user/:id", async (req, res) => {
   }
 });
 
+// Get All Properties
 app.get('/get-properties', authenticateUser, async (req, res) => {
   try {
     const userId = req.userId;
@@ -181,6 +184,8 @@ app.get('/get-properties', authenticateUser, async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch properties' });
   }
 });
+
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
