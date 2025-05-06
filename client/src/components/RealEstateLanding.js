@@ -66,47 +66,6 @@ export default function RealEstateLanding() {
         </div>
       </motion.header>
 
-      {/* Search Bar */}
-      <section className="px-6 py-12 max-w-6xl mx-auto">
-        <div className="bg-[#1a1c22] rounded-xl p-6 shadow-lg">
-          <form className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Location</label>
-              <input
-                type="text"
-                placeholder="e.g., New York, NY"
-                className="w-full px-4 py-2 rounded-md bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Property Type</label>
-              <select className="w-full px-4 py-2 rounded-md bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option>House</option>
-                <option>Apartment</option>
-                <option>Condo</option>
-                <option>Townhouse</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-300 mb-1">Price Range</label>
-              <select className="w-full px-4 py-2 rounded-md bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option>$0 - $200,000</option>
-                <option>$200,000 - $500,000</option>
-                <option>$500,000 - $1,000,000</option>
-                <option>$1,000,000+</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="w-full px-4 py-2 rounded-md bg-yellow-600 hover:bg-yellow-700 text-white transition font-medium"
-              >
-                Search
-              </button>
-            </div>
-          </form>
-        </div>
-      </section>
 
      {/* Features */}
       <section className="px-6 py-16 max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
