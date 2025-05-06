@@ -173,12 +173,69 @@ app.get("/get-user/:id", async (req, res) => {
   }
 });
 
-// Get All Properties
+// Get All Properties with Filters and Pagination
 app.get('/get-properties', authenticateUser, async (req, res) => {
   try {
+    const {
+      city, minPrice, maxPrice, amenities, propertyType, listingType, minArea, maxArea,
+      page = 1, // Default to page 1 if not specified
+      limit = 10 // Default to limit of 10 properties per page
+    } = req.query;
+
     const userId = req.userId;
-    const properties = await Property.find({ userId: { $ne: userId } }); // Exclude user's own properties
-    res.json(properties);
+
+    // Build the filter object
+    let filter = { userId: { $ne: userId } }; // Exclude user's own properties
+
+    if (city) {
+      filter.City = city;
+    }
+
+    if (minPrice) {
+      filter.Price = { $gte: parseFloat(minPrice) };
+    }
+
+    if (maxPrice) {
+      filter.Price = { ...filter.Price, $lte: parseFloat(maxPrice) };
+    }
+
+    if (propertyType) {
+      filter.PropertyType = propertyType;
+    }
+
+    if (listingType) {
+      filter.ListingType = listingType;
+    }
+
+    if (minArea) {
+      filter.Area = { ...filter.Area, $gte: parseFloat(minArea) };
+    }
+
+    if (maxArea) {
+      filter.Area = { ...filter.Area, $lte: parseFloat(maxArea) };
+    }
+
+    // Filter for amenities, if provided
+    if (amenities) {
+      const amenitiesArray = amenities.split(','); // Split amenities by comma
+      amenitiesArray.forEach(amenity => {
+        filter[`BinaryFeatures.${amenity}`] = "Yes"; // Check for "Yes" value in BinaryFeatures
+      });
+    }
+
+    // Fetch properties based on filters and pagination
+    const properties = await Property.find(filter)
+      .skip((page - 1) * limit) // Skip the first (page - 1) * limit items
+      .limit(parseInt(limit)); // Limit the number of results per page
+
+    const totalProperties = await Property.countDocuments(filter); // Get the total count for pagination
+
+    res.json({
+      properties,
+      totalProperties,
+      totalPages: Math.ceil(totalProperties / limit),
+      currentPage: page,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch properties' });
