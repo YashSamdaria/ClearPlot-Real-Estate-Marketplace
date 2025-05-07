@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useNavigate } from "react-router-dom";
+import { ML_URL, SERVER_URL } from "../config";
 
 // Leaflet icon fix
 delete L.Icon.Default.prototype._getIconUrl;
@@ -97,8 +98,7 @@ const PostProperty = () => {
     setImages((prev) => [...prev, ...files]);
   };
 
-  const removeImage = (idx) =>
-    setImages((prev) => prev.filter((_, i) => i !== idx));
+  const removeImage = (idx) => setImages((prev) => prev.filter((_, i) => i !== idx));
 
   const buildPredictPayload = () => {
     const payload = {};
@@ -116,7 +116,7 @@ const PostProperty = () => {
     try {
       const payload = buildPredictPayload();
 
-      const res = await fetch("http://localhost:5001/predict", {
+      const res = await fetch(`${ML_URL}/predict`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -129,18 +129,14 @@ const PostProperty = () => {
         return;
       }
 
-      // Always use backend prediction
       let predictedPriceLakhs = Number(data.predicted_price);
       predictedPriceLakhs = predictedPriceLakhs * 100000;
       let predicted;
       if (formData.ListingType === "Rent") {
-        // Estimate monthly rent from predicted capital value
         predicted = (predictedPriceLakhs * 0.003).toFixed(0); // Rent in ₹
       } else {
         predicted = predictedPriceLakhs.toFixed(2); // Price in Lakhs
       }
-
-      console.log("Predicted:", predicted);
 
       setFormData((prev) => ({ ...prev, PredictedPrice: predicted }));
     } catch (err) {
@@ -160,7 +156,7 @@ const PostProperty = () => {
     Object.entries(formData).forEach(([k, v]) => payload.append(k, v));
     images.forEach((img) => payload.append("images", img));
 
-    const res = await fetch("http://localhost:5000/post-properties", {
+    const res = await fetch(`${SERVER_URL}/post-properties`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: payload,
@@ -171,23 +167,14 @@ const PostProperty = () => {
 
   const yesNo = ["Yes", "No"];
   const listingTypes = ["Buy", "Rent"];
-  const propertyTypes = ["Apartment", "Standalone", "Villa", "Row House"];
+  const propertyTypes = ["Apartment", "Standalone", "Villa", "Row House","Plot","Farmhouse","Penthouse","Duplex House","Loft","Cottage","Studio"];
   const furnishings = ["Unfurnished", "Semi Furnished", "Fully Furnished"];
-  const facings = [
-    "East",
-    "West",
-    "North",
-    "South",
-    "North-East",
-    "South-West",
-  ];
+  const facings = ["East", "West", "North", "South", "North-East", "South-West"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-700 to-indigo-700 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-8">
-        <h2 className="text-3xl font-bold text-center text-purple-800 mb-8">
-          List Your Property
-        </h2>
+        <h2 className="text-3xl font-bold text-center text-purple-800 mb-8">List Your Property</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Listing & Property Type */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -199,9 +186,7 @@ const PostProperty = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {listingTypes.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
+                {listingTypes.map((t) => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
@@ -212,9 +197,7 @@ const PostProperty = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {propertyTypes.map((t) => (
-                  <option key={t}>{t}</option>
-                ))}
+                {propertyTypes.map((t) => <option key={t}>{t}</option>)}
               </select>
             </div>
           </div>
@@ -229,9 +212,7 @@ const PostProperty = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {furnishings.map((f) => (
-                  <option key={f}>{f}</option>
-                ))}
+                {furnishings.map((f) => <option key={f}>{f}</option>)}
               </select>
             </div>
             <div>
@@ -242,115 +223,8 @@ const PostProperty = () => {
                 onChange={handleChange}
                 className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                {facings.map((f) => (
-                  <option key={f}>{f}</option>
-                ))}
+                {facings.map((f) => <option key={f}>{f}</option>)}
               </select>
-            </div>
-          </div>
-
-          {/* Specs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 mb-1">Area (sq ft)</label>
-              <input
-                name="Area"
-                type="number"
-                value={formData.Area}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-1">Bedrooms</label>
-              <input
-                name="No. of Bedrooms"
-                type="number"
-                value={formData["No. of Bedrooms"]}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-            </div>
-          </div>
-
-          {/* Amenities */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {binaryFields.map((f) => (
-              <div key={f}>
-                <label className="block text-gray-700 mb-1 text-sm">
-                  {f.replace(/([A-Z])/g, " $1")}
-                </label>
-                <select
-                  name={f}
-                  value={formData[f]}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 text-sm"
-                >
-                  {yesNo.map((o) => (
-                    <option key={o}>{o}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-
-          {/* City & Coordinates */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 mb-1">City</label>
-              <input
-                name="City"
-                value={formData.City}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-gray-700 mb-1">Latitude</label>
-                <input
-                  name="Latitude"
-                  value={formData.Latitude}
-                  readOnly
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-gray-700 mb-1">Longitude</label>
-                <input
-                  name="Longitude"
-                  value={formData.Longitude}
-                  readOnly
-                  className="w-full px-4 py-2	border rounded-lg bg-gray-100"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Price & Prediction*/}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-gray-700 mb-1">
-                Price (₹ Lakhs)
-              </label>
-              <input
-                name="Price"
-                type="number"
-                value={formData.Price}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 mb-1">
-                Predicted Price
-              </label>
-              <input
-                name="PredictedPrice"
-                value={formData.PredictedPrice}
-                readOnly
-                className="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-600"
-              />
             </div>
           </div>
 
@@ -370,6 +244,7 @@ const PostProperty = () => {
                   <img
                     src={URL.createObjectURL(img)}
                     className="w-full h-full object-cover rounded-lg shadow"
+                    alt={`Property Image ${idx}`}
                   />
                   <button
                     type="button"
@@ -383,30 +258,9 @@ const PostProperty = () => {
             </div>
           </div>
 
-          {/* Description & Enhance Button */}
-          <div>
-            <label className="block text-gray-700 mb-1">Description</label>
-            <textarea
-              name="Description"
-              value={formData.Description}
-              onChange={handleChange}
-              rows={4}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-            />
-            <button
-              type="button"
-              // onClick={handleEnhanceDescription}
-              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-            >
-              Enhance Description
-            </button>
-          </div>
-
           {/* Map */}
           <div>
-            <label className="block text-gray-700 mb-1">
-              Select Location on Map
-            </label>
+            <label className="block text-gray-700 mb-1">Select Location on Map</label>
             <div className="rounded-lg overflow-hidden shadow">
               <MapContainer
                 center={[12.9716, 77.5946]}

@@ -4,6 +4,7 @@ import { Carousel } from "react-responsive-carousel";
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import { SERVER_URL } from "../config";
 
 export default function PropertyDetails() {
   const { id } = useParams();
@@ -52,7 +53,7 @@ export default function PropertyDetails() {
         {property.images?.map((img, i) => (
           <div key={i}>
             <img
-              src={`http://localhost:5000/uploads/${img}`}
+              src={`${img}`}
               alt={`property-${i}`}
               className="object-cover h-[400px] w-full rounded-lg"
             />

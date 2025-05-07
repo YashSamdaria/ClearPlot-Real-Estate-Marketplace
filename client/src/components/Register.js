@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom'; // 👈
+import { SERVER_URL } from '../config';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -13,7 +14,7 @@ const Register = () => {
     setLoading(true); // start loading
 
     try {
-      const response = await fetch('http://localhost:5000/register', {
+      const response = await fetch(`${SERVER_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

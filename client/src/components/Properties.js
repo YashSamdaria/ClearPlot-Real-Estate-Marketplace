@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Search } from "lucide-react";
+import { SERVER_URL } from "../config";
 
 export default function Properties() {
   const [properties, setProperties] = useState([]);
@@ -22,7 +23,8 @@ export default function Properties() {
     "Gymnasium", "SwimmingPool", "LiftAvailable", "24X7Security",
     "PowerBackup", "CarParking", "Wifi", "VaastuCompliant"
   ];
-  const propertyTypes = ["Apartment", "Standalone", "Villa", "Row House"];
+  const propertyTypes = ["Apartment", "Standalone", "Villa", "Row House","Plot","Farmhouse","Penthouse","Duplex House","Loft","Cottage","Studio"];
+
   const listingTypes = ["Buy", "Rent"];
 
   const fetchProperties = async (paramsObj = {}) => {
@@ -47,16 +49,17 @@ export default function Properties() {
 
       const token = localStorage.getItem('token');
       const url = params.toString()
-        ? `http://localhost:5000/get-properties?${params.toString()}`
-        : 'http://localhost:5000/get-properties';
+        ? `${SERVER_URL}/get-properties?${params.toString()}`
+        : `${SERVER_URL}/get-properties`;
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
       const data = await response.json();
-      setProperties(Array.isArray(data.properties) ? data.properties : data);
-    } catch (err) {
+      console.log('API response:', data);
+      setProperties(Array.isArray(data?.properties) ? data.properties : []);
+      } catch (err) {
       console.error('Failed to fetch properties:', err);
       setProperties([]);
     } finally {
@@ -197,7 +200,7 @@ export default function Properties() {
             >
               {property.images?.[0] && (
                 <img
-                  src={`http://localhost:5000/uploads/${property.images[0]}`}
+                  src={`${property.images[0]}`}
                   alt="Property"
                   className="w-full h-40 object-cover"
                 />
