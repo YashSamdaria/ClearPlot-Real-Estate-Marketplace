@@ -4,4 +4,5 @@ server/uploads
 ml_model/venv
 ml_model/dataset.csv
 
+client/.env
 pages
