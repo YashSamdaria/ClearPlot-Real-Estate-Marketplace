@@ -13,7 +13,7 @@ import xgboost as xgb
 
 class HousePricePredictor:
     def __init__(self):
-        base_path = os.path.join(os.path.dirname(__file__), 'ml_model')
+        base_path = os.path.dirname(__file__)
         self.model_file = os.path.join(base_path, 'model.pkl')
         self.num_imp_file = os.path.join(base_path, 'num_imputer.pkl')
         self.bin_imp_file = os.path.join(base_path, 'bin_imputer.pkl')
@@ -21,7 +21,7 @@ class HousePricePredictor:
         self.pca_file = os.path.join(base_path, 'pca.pkl')
         self.features_file = os.path.join(base_path, 'features.pkl')
         self.target = 'Price'  # Assuming 'Price' is the target column
-        
+        print(base_path,"\n",self.model_file)
         # Load if trained model exists
         if self._check_saved_model():
             self.voting_reg = joblib.load(self.model_file)
@@ -85,7 +85,7 @@ class HousePricePredictor:
 
     def train_model(self, test_size=0.2, random_state=42):
         # Use os.path.join to make the file path more reliable
-        base_path = os.path.join(os.path.dirname(__file__), 'ml_model')
+        base_path = os.path.dirname(__file__)
         dataset_path = os.path.join(base_path, 'dataset.csv')
         
         # Load the dataset
@@ -150,3 +150,4 @@ class HousePricePredictor:
         prediction = self.voting_reg.predict(preprocessed)[0]
         print(f"\nPredicted Price: ₹{prediction:.2f} Lakhs")
         return prediction
+
