@@ -20,6 +20,7 @@ class HousePricePredictor:
         self.scaler_file = os.path.join(base_path, 'scaler.pkl')
         self.pca_file = os.path.join(base_path, 'pca.pkl')
         self.features_file = os.path.join(base_path, 'features.pkl')
+        self.target = 'Price'  # Assuming 'Price' is the target column
         
         # Load if trained model exists
         if self._check_saved_model():
@@ -45,17 +46,15 @@ class HousePricePredictor:
             self.train_model()
 
     def _check_saved_model(self):
-        return all([
-            os.path.exists(self.model_file),
-            os.path.exists(self.num_imp_file),
-            os.path.exists(self.bin_imp_file),
-            os.path.exists(self.scaler_file),
-            os.path.exists(self.pca_file),
-            os.path.exists(self.features_file)
-        ])
+        return all([os.path.exists(self.model_file),
+                    os.path.exists(self.num_imp_file),
+                    os.path.exists(self.bin_imp_file),
+                    os.path.exists(self.scaler_file),
+                    os.path.exists(self.pca_file),
+                    os.path.exists(self.features_file)])
 
     def _get_features(self, df):
-        df = df.drop(columns=['Id', 'Location', 'City', self.target])
+        df = df.drop(columns=['Id', 'Location', 'City', self.target])  # Make sure to drop the 'Id', 'Location', 'City', and target
         self.numerical_features = ['Area', 'No. of Bedrooms', 'Latitude', 'Longitude']
         self.binary_features = [col for col in df.columns if col not in self.numerical_features]
         self.all_features = self.numerical_features + self.binary_features
@@ -85,21 +84,30 @@ class HousePricePredictor:
         return X_transformed
 
     def train_model(self, test_size=0.2, random_state=42):
-        df = pd.read_csv("ml_model/dataset.csv")  # Relative path, assuming the file is in the 'ml_model' folder
+        # Use os.path.join to make the file path more reliable
+        base_path = os.path.join(os.path.dirname(__file__), 'ml_model')
+        dataset_path = os.path.join(base_path, 'dataset.csv')
+        
+        # Load the dataset
+        df = pd.read_csv(dataset_path)  # Make sure the file path is correct
         self._get_features(df)
 
+        # Define the feature set and target
         X = df[self.all_features]
         y = df[self.target]
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=test_size, random_state=random_state
-        )
+        
+        # Split the data into training and test sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
+        # Preprocess the data
         X_train_preprocessed = self.preprocess_data(X_train, fit=True)
         X_test_preprocessed = self.preprocess_data(X_test, fit=False)
 
+        # Set hyperparameters for RandomForest and XGBoost
         rf_params = {'n_estimators': [100], 'max_depth': [10]}
         xgb_params = {'n_estimators': [100], 'max_depth': [5], 'learning_rate': [0.1]}
         
+        # Perform GridSearchCV for both models
         rf_grid = GridSearchCV(self.rf, rf_params, cv=3, scoring='r2', n_jobs=-1)
         rf_grid.fit(X_train_preprocessed, y_train)
         best_rf = rf_grid.best_estimator_
@@ -108,6 +116,7 @@ class HousePricePredictor:
         xgb_grid.fit(X_train_preprocessed, y_train)
         best_xgb = xgb_grid.best_estimator_
 
+        # Create a Voting Regressor combining all models
         self.voting_reg = VotingRegressor([
             ('rf', best_rf),
             ('xgb', best_xgb),
@@ -115,7 +124,7 @@ class HousePricePredictor:
         ])
         self.voting_reg.fit(X_train_preprocessed, y_train)
 
-        # Save model and preprocessing pipeline
+        # Save the trained models and preprocessing pipeline
         joblib.dump(self.voting_reg, self.model_file)
         joblib.dump(self.num_imputer, self.num_imp_file)
         joblib.dump(self.bin_imputer, self.bin_imp_file)
@@ -123,16 +132,21 @@ class HousePricePredictor:
         joblib.dump(self.pca, self.pca_file)
         joblib.dump(self.all_features, self.features_file)
 
-        # Optional: print metrics
+        # Evaluate model performance on the test set
         y_pred = self.voting_reg.predict(X_test_preprocessed)
         print("R2 Score:", r2_score(y_test, y_pred))
 
     def predict(self, input_data):
+        # Ensure all features are present in the input_data, adding missing ones with default values
         for f in self.all_features:
             if f not in input_data:
                 input_data[f] = 0
         input_df = pd.DataFrame([input_data])
+        
+        # Preprocess the input data
         preprocessed = self.preprocess_data(input_df)
+        
+        # Make prediction
         prediction = self.voting_reg.predict(preprocessed)[0]
         print(f"\nPredicted Price: ₹{prediction:.2f} Lakhs")
         return prediction
