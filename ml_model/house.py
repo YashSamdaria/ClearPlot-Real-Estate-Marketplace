@@ -13,15 +13,14 @@ import xgboost as xgb
 
 class HousePricePredictor:
     def __init__(self):
-        self.csv_path = "dataset.csv"
-        self.target = 'Price'
-        self.model_file = 'model.pkl'
-        self.num_imp_file = 'num_imputer.pkl'
-        self.bin_imp_file = 'bin_imputer.pkl'
-        self.scaler_file = 'scaler.pkl'
-        self.pca_file = 'pca.pkl'
-        self.features_file = 'features.pkl'
-
+        base_path = os.path.join(os.path.dirname(__file__), 'ml_model')
+        self.model_file = os.path.join(base_path, 'model.pkl')
+        self.num_imp_file = os.path.join(base_path, 'num_imputer.pkl')
+        self.bin_imp_file = os.path.join(base_path, 'bin_imputer.pkl')
+        self.scaler_file = os.path.join(base_path, 'scaler.pkl')
+        self.pca_file = os.path.join(base_path, 'pca.pkl')
+        self.features_file = os.path.join(base_path, 'features.pkl')
+        
         # Load if trained model exists
         if self._check_saved_model():
             self.voting_reg = joblib.load(self.model_file)
