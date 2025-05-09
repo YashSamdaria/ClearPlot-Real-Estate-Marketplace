@@ -27,6 +27,5 @@ def predict_route():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
 
-# Optional for local testing only
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5001)
