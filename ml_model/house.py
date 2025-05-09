@@ -85,7 +85,7 @@ class HousePricePredictor:
         return X_transformed
 
     def train_model(self, test_size=0.2, random_state=42):
-        df = pd.read_csv(self.csv_path)
+        df = pd.read_csv("ml_model/dataset.csv")  # Relative path, assuming the file is in the 'ml_model' folder
         self._get_features(df)
 
         X = df[self.all_features]
