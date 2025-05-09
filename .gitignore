@@ -5,4 +5,5 @@ ml_model/venv
 ml_model/dataset.csv
 
 client/.env
+client/node_modules
 pages
