@@ -6,28 +6,29 @@ const dotenv = require('dotenv');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const path = require('path');
 
-
-// Models
+// Models (assumed to be defined in separate files)
 const User = require('./model/User');
 const Property = require('./model/Property');
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080; // Fallback to 8080 for Railway compatibility
 
-// Cloudinary config
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// **Cloudinary Configuration with Error Handling**
+try {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+  console.log('Cloudinary configured successfully');
+} catch (err) {
+  console.error('Cloudinary config error:', err);
+}
 
-const COHERE_API_KEY = process.env.COHERE_API_KEY; 
-
-// Multer storage config using Cloudinary
+// **Multer Storage Configuration for Cloudinary**
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -38,18 +39,21 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage });
 
-// Middleware
+// **Middleware**
 app.use(cors());
 app.use(express.json());
 
-// MongoDB connect
+// **MongoDB Connection with Error Handling**
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => console.log('Connected to MongoDB'))
-  .catch((error) => console.error('MongoDB error:', error));
+  .catch((error) => {
+    console.error('MongoDB connection error:', error);
+    process.exit(1); // Exit process if MongoDB fails
+  });
 
-// JWT Auth middleware
+// **JWT Authentication Middleware with Error Logging**
 const authenticateUser = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) {
@@ -62,14 +66,20 @@ const authenticateUser = (req, res, next) => {
     req.userId = decoded.userId;
     next();
   } catch (err) {
+    console.error('JWT verification error:', err);
     return res.status(401).json({ message: 'Unauthorized: Invalid token' });
   }
 };
 
-// Routes
+// **Routes**
 
-app.get('/', (req, res) => res.send('ClearPLOT backend is live!'));
+// Root Route
+app.get('/', (req, res) => {
+  console.log('Root endpoint hit');
+  res.send('ClearPLOT backend is live!');
+});
 
+// Register Route
 app.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password) return res.status(400).json({ message: 'All fields required' });
@@ -82,10 +92,12 @@ app.post('/register', async (req, res) => {
     await newUser.save();
     res.status(201).json({ message: 'User registered' });
   } catch (err) {
+    console.error('Register error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
+// Login Route
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Email & password required' });
@@ -103,23 +115,23 @@ app.post('/login', async (req, res) => {
 
     res.json({ token });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Upload Property
+// Post Property Route with Image Upload
 app.post("/post-properties", authenticateUser, upload.array("images", 5), async (req, res) => {
   try {
     const form = req.body;
-
     const imageUrls = req.files.map(file => file.path);
 
     const binaryFields = [
-      'Resale','MaintenanceStaff','Gymnasium','SwimmingPool','LandscapedGardens','JoggingTrack','RainWaterHarvesting',
-      'IndoorGames','ShoppingMall','Intercom','SportsFacility','ATM','ClubHouse','School','24X7Security','PowerBackup',
-      'CarParking','StaffQuarter','Cafeteria','MultipurposeRoom','Hospital','WashingMachine','Gasconnection','AC','Wifi',
-      'Childrensplayarea','LiftAvailable','BED','VaastuCompliant','Microwave','GolfCourse','TV','DiningTable','Sofa',
-      'Wardrobe','Refrigerator'
+      'Resale', 'MaintenanceStaff', 'Gymnasium', 'SwimmingPool', 'LandscapedGardens', 'JoggingTrack', 'RainWaterHarvesting',
+      'IndoorGames', 'ShoppingMall', 'Intercom', 'SportsFacility', 'ATM', 'ClubHouse', 'School', '24X7Security', 'PowerBackup',
+      'CarParking', 'StaffQuarter', 'Cafeteria', 'MultipurposeRoom', 'Hospital', 'WashingMachine', 'Gasconnection', 'AC', 'Wifi',
+      'Childrensplayarea', 'LiftAvailable', 'BED', 'VaastuCompliant', 'Microwave', 'GolfCourse', 'TV', 'DiningTable', 'Sofa',
+      'Wardrobe', 'Refrigerator'
     ];
 
     const BinaryFeatures = {};
@@ -153,23 +165,24 @@ app.post("/post-properties", authenticateUser, upload.array("images", 5), async 
     await newProperty.save();
     res.status(201).json({ message: "Property posted successfully", property: newProperty });
   } catch (err) {
-    console.error(err);
+    console.error('Post property error:', err);
     res.status(500).json({ error: "Failed to post property" });
   }
 });
 
-// Get user by ID
+// Get User by ID Route
 app.get("/get-user/:id", async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("name email");
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (err) {
+    console.error('Get user error:', err);
     res.status(500).json({ message: "Error fetching user" });
   }
 });
 
-// Get filtered properties with pagination
+// Get Filtered Properties Route with Pagination
 app.get('/get-properties', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -181,7 +194,7 @@ app.get('/get-properties', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         userId = decoded.userId;
       } catch (err) {
-        // Invalid token, proceed as unauthenticated
+        console.error('JWT verification error in get-properties:', err);
       }
     }
 
@@ -221,11 +234,12 @@ app.get('/get-properties', async (req, res) => {
       currentPage: Number(page)
     });
   } catch (err) {
+    console.error('Get properties error:', err);
     res.status(500).json({ message: 'Failed to fetch properties' });
   }
 });
 
-
+// Enhance Property Description Route
 app.post("/enhance-description", async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: "Missing prompt" });
@@ -234,7 +248,7 @@ app.post("/enhance-description", async (req, res) => {
     const response = await fetch("https://api.cohere.ai/v1/chat", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${COHERE_API_KEY}`,
+        "Authorization": `Bearer ${process.env.COHERE_API_KEY}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -255,7 +269,20 @@ app.post("/enhance-description", async (req, res) => {
   }
 });
 
-
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+// **Global Error Handlers**
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
 });
+
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+});
+
+// **Start Server with Error Handling**
+try {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+} catch (err) {
+  console.error('Server startup error:', err);
+}
