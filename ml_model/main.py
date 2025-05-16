@@ -3,6 +3,7 @@ from house import HousePricePredictor
 import traceback
 from flask_cors import CORS
 import pandas as pd  # Required for input DataFrame
+import os
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS
@@ -26,4 +27,11 @@ def predict_route():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 400
+    
+
+if __name__ == "__main__":
+    if os.getenv("FLASK_ENV") == "production":
+        pass  # Do nothing; run with Gunicorn
+    else:
+        app.run(host="0.0.0.0", port=5001, debug=True)
 

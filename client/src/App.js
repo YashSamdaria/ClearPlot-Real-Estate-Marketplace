@@ -7,7 +7,9 @@ import Footer from "./components/Footer";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import PostProperty from "./components/PostProperty";
-import PropertyDetails from "./components/PropertyDetails"; // Adjust path as needed
+import PropertyDetails from "./components/PropertyDetails"; 
+import Profile from "./components/Profile";
+import EditProperty from "./components/EditProperty";
 
 function App() {
   return (
@@ -19,7 +21,10 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/post-property" element={<PostProperty />} />
+      <Route path="/user-profile/:token" element={<Profile />} />
       <Route path="/property-details/:id" element={<PropertyDetails />} />
+      <Route path="/edit-property/:id" element={<EditProperty />} />
+
     </Routes>
     <Footer />
   </Router>

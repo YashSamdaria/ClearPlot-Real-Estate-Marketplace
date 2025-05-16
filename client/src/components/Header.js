@@ -1,9 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { User } from "lucide-react";
 
 function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -33,6 +35,12 @@ function Header() {
                 className="px-4 py-2 rounded-lg bg-[#FFD700] text-[#0a0f1c] font-semibold hover:bg-white hover:text-[#0a0f1c] transition"
               >
                 Post Property
+              </Link>
+              <Link
+                to={`/user-profile/${token}`}
+                className="px-4 py-2 rounded-lg border border-white hover:bg-white hover:text-[#0a0f1c] transition"
+              >
+                Profile
               </Link>
               <button
                 onClick={handleLogout}
